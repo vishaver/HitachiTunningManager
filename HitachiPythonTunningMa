@@ -1,0 +1,127 @@
+import requests
+import urllib3
+import json
+from requests import ConnectTimeout
+from requests.auth import HTTPBasicAuth
+import pandas as pd
+import mysql.connector
+from sqlalchemy import create_engine
+from pandas.io.json import json_normalize
+import datetime
+import sys
+import os
+import multiprocessing
+from multiprocessing import Pool
+df = "None"
+os.chdir("/apps/python3/hitachi/1m")
+os.system("rm -f csv_*")
+storageName={"storagename1":"Agent-Server","storagename2":"Agent-Server"}
+
+url={"Port_stats":"http://IP:22015/TuningManager/v1/objects/RAID_PI_PTS","storage_system_stats":"http://IP:22015/TuningManager/v1/objects/RAID_PI","storage_system_stats":"http://IP:22015/TuningManager/v1/objects/RAID_PI"}
+
+def getData(x):
+    agentServer=storageName[x]
+    for l,m in url.items():
+        orig_stdout = sys.stdout
+        csv = "csv" + "_" + x + "_" + l
+        f = open(csv,'w')
+        sys.stdout = f
+        urlh = m + "?hostName=" + agentServer + "%26agentInstanceName=" + x
+        try:
+           r=requests.get(urlh,auth=HTTPBasicAuth('usrename','password'),verify=False,timeout=20)
+        except ConnectTimeout:
+           print('Timeout threashold passed')
+        print(r.text)
+        sys.stdout = orig_stdout
+        f.close()
+        df=pd.read_csv(csv)
+        orig_stdout = sys.stdout
+        y = l + "_" + x
+        f = open(y,'w')
+        sys.stdout = f
+        if l == "Pool_Perf_stats":
+            for index,row in df[1:].iterrows():
+                print('{} GMT_ADJUST = {} RECORD_TIME = {} POOL_ID = {} INTERVAL = {} READ_IO_RATE = {} WRITE_IO_RATE = {} READ_RESPONSE_RATE = {} WRITE_RESPONSE_RATE = {} READ_XFER_RATE = {} WRITE_XFER_RATE = {}'.format(row['DATETIME'], row['GMT_ADJUST'], row['RECORD_TIME'], row['POOL_ID'], row['INTERVAL'], row['READ_IO_RATE'], row['WRITE_IO_RATE'], row['READ_RESPONSE_RATE'], row['WRITE_RESPONSE_RATE'], row['READ_XFER_RATE'], row['WRITE_XFER_RATE']))
+        elif l == "Pool_capacity_stats":
+            for index,row in df[1:].iterrows():
+                print('{} GMT_ADJUST = {} RECORD_TIME = {} COLLECTION_TIME = {} POOL_ID = {} INTERVAL = {} ATTRIBUTE = {} STATUS = {} USAGE_RATE = {} THRESHOLD = {} WARNING_THRESHOLD = {} TOTAL_MANAGED_CAPACITY = {} TOTAL_ACTUAL_CAPACITY = {} USED_CAPACITY = {} FREE_CAPACITY = {} VIRTUAL_VOLUME_COUNT = {} POOL_VOLUME_COUNT = {} EMULATION_TYPE = {} RESERVED_CAPACITY = {} PHYSICAL_CAPACITY_TOTAL = {} PHYSICAL_CAPACITY_USED = {} PHYSICAL_CAPACITY_FREE = {} PHYSICAL_CAPACITY_USAGE_RATE = {} POOL_CAPACITY_EXPANSION_RATE = {} FMC_POOL_CAPACITY_SAVING = {} FMC_POOL_CAPACITY_SAVING_RATE = {}'.format(row['DATETIME'], row['GMT_ADJUST'], row['RECORD_TIME'], row['COLLECTION_TIME'], row['POOL_ID'], row['INTERVAL'], row['ATTRIBUTE'], row['STATUS'], row['USAGE_RATE'], row['THRESHOLD'], row['WARNING_THRESHOLD'],row['TOTAL_MANAGED_CAPACITY'],row['TOTAL_ACTUAL_CAPACITY'],row['USED_CAPACITY'],row['FREE_CAPACITY'],row['VIRTUAL_VOLUME_COUNT'],row['POOL_VOLUME_COUNT'],row['EMULATION_TYPE'],row['RESERVED_CAPACITY'],row['PHYSICAL_CAPACITY_TOTAL'],row['PHYSICAL_CAPACITY_USED'],row['PHYSICAL_CAPACITY_FREE'],row['PHYSICAL_CAPACITY_USAGE_RATE'],row['POOL_CAPACITY_EXPANSION_RATE'],row['FMC_POOL_CAPACITY_SAVING'],row['FMC_POOL_CAPACITY_SAVING_RATE']))
+        elif l == "Port_stats":
+            for index,row in df[1:].iterrows():
+                print('{} GMT_ADJUST = {}  RECORD_TIME = {}  PORT_NUMBER = {}  INTERVAL = {}  PORT_NAME = {}  READ_IO_COUNT = {}  READ_IO_RATE = {}  WRITE_IO_COUNT = {}  WRITE_IO_RATE = {}  TOTAL_IO_COUNT = {}  MAX_IO_RATE = {}  MIN_IO_RATE = {}  AVG_IO_RATE = {}  READ_MBYTES = {}  READ_XFER_RATE = {}  WRITE_MBYTES = {}  WRITE_XFER_RATE = {}  TOTAL_MBYTES = {}  MAX_XFER_RATE = {}  MIN_XFER_RATE = {}  AVG_XFER_RATE = {}  READ_TOTAL_RESPONSE = {}  READ_RESPONSE_RATE = {}  WRITE_TOTAL_RESPONSE = {}  WRITE_RESPONSE_RATE = {}  CHA_NAME = {}  INITIATOR_TOTAL_IO_COUNT = {}  INITIATOR_MAX_IO_RATE = {}  INITIATOR_MIN_IO_RATE = {}  INITIATOR_AVG_IO_RATE = {}  INITIATOR_TOTAL_MBYTES = {}  INITIATOR_MAX_XFER_RATE = {}  INITIATOR_MIN_XFER_RATE = {}  INITIATOR_AVG_XFER_RATE = {}  PORT_ROLE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['PORT_NUMBER'],row['INTERVAL'],row['PORT_NAME'],row['READ_IO_COUNT'],row['READ_IO_RATE'],row['WRITE_IO_COUNT'],row['WRITE_IO_RATE'],row['TOTAL_IO_COUNT'],row['MAX_IO_RATE'],row['MIN_IO_RATE'],row['AVG_IO_RATE'],row['READ_MBYTES'],row['READ_XFER_RATE'],row['WRITE_MBYTES'],row['WRITE_XFER_RATE'],row['TOTAL_MBYTES'],row['MAX_XFER_RATE'],row['MIN_XFER_RATE'],row['AVG_XFER_RATE'],row['READ_TOTAL_RESPONSE'],row['READ_RESPONSE_RATE'],row['WRITE_TOTAL_RESPONSE'],row['WRITE_RESPONSE_RATE'],row['CHA_NAME'],row['INITIATOR_TOTAL_IO_COUNT'],row['INITIATOR_MAX_IO_RATE'],row['INITIATOR_MIN_IO_RATE'],row['INITIATOR_AVG_IO_RATE'],row['INITIATOR_TOTAL_MBYTES'],row['INITIATOR_MAX_XFER_RATE'],row['INITIATOR_MIN_XFER_RATE'],row['INITIATOR_AVG_XFER_RATE'],row['PORT_ROLE']))
+        elif l == "Port_config":
+            for index,row in df[1:].iterrows():
+                print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  PORT_NUMBER = {}  PORT_NAME = {}  INTERVAL = {}  PORT_WWN = {}  PORT_TYPE = {}  AL_PA = {}  PORT_ROLE = {}  PORT_SPEED = {}  PORT_STATUS = {}  SLPR_NUMBER = {}  CHA_NAME = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['PORT_NUMBER'],row['PORT_NAME'],row['INTERVAL'],row['PORT_WWN'],row['PORT_TYPE'],row['AL_PA'],row['PORT_ROLE'],row['PORT_SPEED'],row['PORT_STATUS'],row['SLPR_NUMBER'],row['CHA_NAME']))
+        elif l == "storage_system":
+            for index,row in df[1:].iterrows():
+                print('{} GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  INTERVAL = {}  DKC_SERIAL_NUMBER = {}  UNIT_ID = {}  VENDOR_ID = {}  DKC_NAME = {}  DKC_STATUS = {}  CACHE_MEMORY_CAPACITY = {}  CACHE_MEMORY_INSTALLED_SIZE = {}  MONITORED_SLPR_NUMBER = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['INTERVAL'],row['DKC_SERIAL_NUMBER'],row['UNIT_ID'],row['VENDOR_ID'],row['DKC_NAME'],row['DKC_STATUS'],row['CACHE_MEMORY_CAPACITY'],row['CACHE_MEMORY_INSTALLED_SIZE'],row['MONITORED_SLPR_NUMBER']))
+        elif l == "storage_system_stats":
+            for index,row in df[1:].iterrows():
+                print('{} GMT_ADJUST = {}  RECORD_TIME = {}  INTERVAL = {}  CACHE_MEMORY_USAGE = {}  CACHE_MEMORY_USAGE_RATE = {}  MAX_CACHE_MEMORY_USAGE_RATE = {}  CACHE_WRITE_PENDING = {}  CACHE_WRITE_PENDING_RATE = {}  MAX_CACHE_WRITE_PENDING_RATE = {}  CACHE_SIDE_FILE = {}  CACHE_SIDE_FILE_RATE = {}  MAX_CACHE_SIDE_FILE_RATE = {}  CACHE_MEMORY_CAPACITY = {}  PORT_COUNT = {}  LDEV_COUNT = {}  CHA_CACHE_PATH_USAGE_RATE = {}  DKA_CACHE_PATH_USAGE_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['INTERVAL'],row['CACHE_MEMORY_USAGE'],row['CACHE_MEMORY_USAGE_RATE'],row['MAX_CACHE_MEMORY_USAGE_RATE'],row['CACHE_WRITE_PENDING'],row['CACHE_WRITE_PENDING_RATE'],row['MAX_CACHE_WRITE_PENDING_RATE'],row['CACHE_SIDE_FILE'],row['CACHE_SIDE_FILE_RATE'],row['MAX_CACHE_SIDE_FILE_RATE'],row['CACHE_MEMORY_CAPACITY'],row['PORT_COUNT'],row['LDEV_COUNT'],row['CHA_CACHE_PATH_USAGE_RATE'],row['DKA_CACHE_PATH_USAGE_RATE']))
+        elif l == "storage_system_stats1":
+            for index,row in df[1:].iterrows():
+                print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  LDEV_COUNT = {}  MONITORED_LDEV_COUNT = {}  INTERVAL = {}  READ_IO_COUNT = {}  READ_IO_RATE = {}  READ_HIT_IO_COUNT = {}  READ_HIT_RATE = {}  WRITE_IO_COUNT = {}  WRITE_IO_RATE = {}  WRITE_HIT_IO_COUNT = {}  WRITE_HIT_RATE = {}  READ_MBYTES = {}  READ_XFER_RATE = {}  WRITE_MBYTES = {}  WRITE_XFER_RATE = {}  READ_TOTAL_RESPONSE = {}  READ_RESPONSE_RATE = {}  WRITE_TOTAL_RESPONSE = {}  WRITE_RESPONSE_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['LDEV_COUNT'],row['MONITORED_LDEV_COUNT'],row['INTERVAL'],row['READ_IO_COUNT'],row['READ_IO_RATE'],row['READ_HIT_IO_COUNT'],row['READ_HIT_RATE'],row['WRITE_IO_COUNT'],row['WRITE_IO_RATE'],row['WRITE_HIT_IO_COUNT'],row['WRITE_HIT_RATE'],row['READ_MBYTES'],row['READ_XFER_RATE'],row['WRITE_MBYTES'],row['WRITE_XFER_RATE'],row['READ_TOTAL_RESPONSE'],row['READ_RESPONSE_RATE'],row['WRITE_TOTAL_RESPONSE'],row['WRITE_RESPONSE_RATE']))
+        elif l == "cache_cliper":
+             for index,row in df[1:].iterrows():
+                print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  CLPR_NUMBER = {}  INTERVAL = {}  CLPR_NAME = {}  CACHE_MEMORY_CAPACITY = {}  SLPR_NUMBER = {}  SLPR_NAME = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['CLPR_NUMBER'],row['INTERVAL'],row['CLPR_NAME'],row['CACHE_MEMORY_CAPACITY'],row['SLPR_NUMBER'],row['SLPR_NAME']))
+        elif l == "cache_cliper1":
+             for index,row in df[1:].iterrows():
+               print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  CLPR_NUMBER = {}  INTERVAL = {}  CACHE_MEMORY_USAGE = {}  CACHE_MEMORY_USAGE_RATE = {}  MAX_CACHE_MEMORY_USAGE_RATE = {}  CACHE_WRITE_PENDING = {}  CACHE_WRITE_PENDING_RATE = {}  MAX_CACHE_WRITE_PENDING_RATE = {}  CACHE_SIDE_FILE = {}  CACHE_SIDE_FILE_RATE = {}  MAX_CACHE_SIDE_FILE_RATE = {}  CACHE_MEMORY_CAPACITY = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['CLPR_NUMBER'],row['INTERVAL'],row['CACHE_MEMORY_USAGE'],row['CACHE_MEMORY_USAGE_RATE'],row['MAX_CACHE_MEMORY_USAGE_RATE'],row['CACHE_WRITE_PENDING'],row['CACHE_WRITE_PENDING_RATE'],row['MAX_CACHE_WRITE_PENDING_RATE'],row['CACHE_SIDE_FILE'],row['CACHE_SIDE_FILE_RATE'],row['MAX_CACHE_SIDE_FILE_RATE'],row['CACHE_MEMORY_CAPACITY']))
+        elif l == "cache_cliper2":
+             for index,row in df[1:].iterrows():
+                print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  MP_BLADE_ID = {}  CLPR_NUMBER = {}  INTERVAL = {}  CACHE_MEMORY_USAGE_RATE = {}  MAX_CACHE_MEMORY_USAGE_RATE = {}  CACHE_WRITE_PENDING_RATE = {}  MAX_CACHE_WRITE_PENDING_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['MP_BLADE_ID'],row['CLPR_NUMBER'],row['INTERVAL'],row['CACHE_MEMORY_USAGE_RATE'],row['MAX_CACHE_MEMORY_USAGE_RATE'],row['CACHE_WRITE_PENDING_RATE'],row['MAX_CACHE_WRITE_PENDING_RATE']))
+        elif l == "processor_1":
+             for index,row in df[1:].iterrows():
+                print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  MP_BLADE_ID = {}  PROCESSOR_ID = {}  USAGE_RANK = {}  INTERVAL = {}  PROCESSING_TYPE = {}  RESOURCE_TYPE = {}  RESOURCE_ID = {}  RESOURCE_UTILIZATION = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['MP_BLADE_ID'],row['PROCESSOR_ID'],row['USAGE_RANK'],row['INTERVAL'],row['PROCESSING_TYPE'],row['RESOURCE_TYPE'],row['RESOURCE_ID'],row['RESOURCE_UTILIZATION']))
+        elif l == "processor_2":
+             for index,row in df[1:].iterrows():
+                print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  ADAPTOR_ID = {}  PROCESSOR_ID = {}  INTERVAL = {}  CONTROLLER = {}  PROCESSOR_TYPE = {}  PROCESSOR_BUSY_RATE = {}  MAX_PROCESSOR_BUSY_RATE = {}  MAX_BUFFER_LENGTH = {}  BUFFER_IO_COUNT = {}  MAX_BUFFER_IO_COUNT = {}  BUFFER_IO_RATE = {}  MAX_BUFFER_IO_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['ADAPTOR_ID'],row['PROCESSOR_ID'],row['INTERVAL'],row['CONTROLLER'],row['PROCESSOR_TYPE'],row['PROCESSOR_BUSY_RATE'],row['MAX_PROCESSOR_BUSY_RATE'],row['MAX_BUFFER_LENGTH'],row['BUFFER_IO_COUNT'],row['MAX_BUFFER_IO_COUNT'],row['BUFFER_IO_RATE'],row['MAX_BUFFER_IO_RATE']))
+        elif l == "channel_adapter":
+             for index,row in df[1:].iterrows():
+                print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  CHA_NAME = {}  INTERVAL = {}  AVG_IO_RATE = {}  AVG_XFER_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['CHA_NAME'],row['INTERVAL'],row['AVG_IO_RATE'],row['AVG_XFER_RATE']))
+        elif l == "pool_capacity":
+             for index,row in df[1:].iterrows():
+                print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  POOL_ID = {}  INTERVAL = {}  ATTRIBUTE = {}  STATUS = {}  USAGE_RATE = {}  THRESHOLD = {}  WARNING_THRESHOLD = {}  TOTAL_MANAGED_CAPACITY = {}  TOTAL_ACTUAL_CAPACITY = {}  USED_CAPACITY = {}  FREE_CAPACITY = {}  VIRTUAL_VOLUME_COUNT = {}  POOL_VOLUME_COUNT = {}  EMULATION_TYPE = {}  RESERVED_CAPACITY = {}  PHYSICAL_CAPACITY_TOTAL = {}  PHYSICAL_CAPACITY_USED = {}  PHYSICAL_CAPACITY_FREE = {}  PHYSICAL_CAPACITY_USAGE_RATE = {}  POOL_CAPACITY_EXPANSION_RATE = {}  FMC_POOL_CAPACITY_SAVING = {}  FMC_POOL_CAPACITY_SAVING_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['POOL_ID'],row['INTERVAL'],row['ATTRIBUTE'],row['STATUS'],row['USAGE_RATE'],row['THRESHOLD'],row['WARNING_THRESHOLD'],row['TOTAL_MANAGED_CAPACITY'],row['TOTAL_ACTUAL_CAPACITY'],row['USED_CAPACITY'],row['FREE_CAPACITY'],row['VIRTUAL_VOLUME_COUNT'],row['POOL_VOLUME_COUNT'],row['EMULATION_TYPE'],row['RESERVED_CAPACITY'],row['PHYSICAL_CAPACITY_TOTAL'],row['PHYSICAL_CAPACITY_USED'],row['PHYSICAL_CAPACITY_FREE'],row['PHYSICAL_CAPACITY_USAGE_RATE'],row['POOL_CAPACITY_EXPANSION_RATE'],row['FMC_POOL_CAPACITY_SAVING'],row['FMC_POOL_CAPACITY_SAVING_RATE']))
+        elif l == "pool_page_stats":
+             for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  POOL_ID = {}  PARTITION_NUMBER = {}  INTERVAL = {}  CAPACITY = {}  AVG_PAGE_IO_RATE = {}  MONITOR_COLLECTION_START_TIME = {}  MONITOR_COLLECTION_END_TIME = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['POOL_ID'],row['PARTITION_NUMBER'],row['INTERVAL'],row['CAPACITY'],row['AVG_PAGE_IO_RATE'],row['MONITOR_COLLECTION_START_TIME'],row['MONITOR_COLLECTION_END_TIME']))
+        elif l == "pool_stats":
+             for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  POOL_ID = {}  INTERVAL = {}  READ_IO_RATE = {}  WRITE_IO_RATE = {}  READ_RESPONSE_RATE = {}  WRITE_RESPONSE_RATE = {}  READ_XFER_RATE = {}  WRITE_XFER_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['POOL_ID'],row['INTERVAL'],row['READ_IO_RATE'],row['WRITE_IO_RATE'],row['READ_RESPONSE_RATE'],row['WRITE_RESPONSE_RATE'],row['READ_XFER_RATE'],row['WRITE_XFER_RATE']))
+        elif l == "virtualvolume_capacity":
+             for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  LDEV_NUMBER = {}  INTERVAL = {}  POOL_ID = {}  THRESHOLD = {}  USAGE_RATE = {}  POOL_FREE_CAPACITY_RATE = {}  VIRTUAL_VOLUME_CAPACITY = {}  USED_CAPACITY = {}  FREE_CAPACITY = {}  ATTRIBUTE = {}  RESERVED_CAPACITY = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['LDEV_NUMBER'],row['INTERVAL'],row['POOL_ID'],row['THRESHOLD'],row['USAGE_RATE'],row['POOL_FREE_CAPACITY_RATE'],row['VIRTUAL_VOLUME_CAPACITY'],row['USED_CAPACITY'],row['FREE_CAPACITY'],row['ATTRIBUTE'],row['RESERVED_CAPACITY']))
+        elif l == "virtualvolume_page":
+             for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  LDEV_NUMBER = {}  PARTITION_NUMBER = {}  INTERVAL = {}  POOL_ID = {}  CAPACITY = {}  AVG_PAGE_IO_RATE = {}  MONITOR_COLLECTION_START_TIME = {}  MONITOR_COLLECTION_END_TIME = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['LDEV_NUMBER'],row['PARTITION_NUMBER'],row['INTERVAL'],row['POOL_ID'],row['CAPACITY'],row['AVG_PAGE_IO_RATE'],row['MONITOR_COLLECTION_START_TIME'],row['MONITOR_COLLECTION_END_TIME']))
+        elif l == "tier_pool_capacity":
+              for index,row in df[1:].iterrows():
+                 print('{} GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  POOL_ID = {}  TIER_TYPE = {}  INTERVAL = {}  TIER_NUMBER = {}  USAGE_RATE_IN_POOL = {}  USAGE_RATE_IN_TIER = {}  TOTAL_CAPACITY = {}  USED_CAPACITY = {}  FREE_CAPACITY = {}  MONITORING_MODE = {}  PHYSICAL_FMC_CAPACITY_TOTAL = {}  PHYSICAL_FMC_CAPACITY_USED = {}  PHYSICAL_FMC_CAPACITY_FREE = {}  PHYSICAL_FMC_CAP_USAGE_RATE = {}  FMC_POOL_CAPACITY_TOTAL = {}  FMC_POOL_CAPACITY_USED = {}  FMC_POOL_CAPACITY_FREE = {}  FMC_POOL_CAPACITY_USAGE_RATE = {}  FMC_POOL_CAPACITY_SAVING = {}  FMC_POOL_CAPACITY_SAVING_RATE = {}  FMC_CAPACITY_EXPANSION_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['POOL_ID'],row['TIER_TYPE'],row['INTERVAL'],row['TIER_NUMBER'],row['USAGE_RATE_IN_POOL'],row['USAGE_RATE_IN_TIER'],row['TOTAL_CAPACITY'],row['USED_CAPACITY'],row['FREE_CAPACITY'],row['MONITORING_MODE'],row['PHYSICAL_FMC_CAPACITY_TOTAL'],row['PHYSICAL_FMC_CAPACITY_USED'],row['PHYSICAL_FMC_CAPACITY_FREE'],row['PHYSICAL_FMC_CAP_USAGE_RATE'],row['FMC_POOL_CAPACITY_TOTAL'],row['FMC_POOL_CAPACITY_USED'],row['FMC_POOL_CAPACITY_FREE'],row['FMC_POOL_CAPACITY_USAGE_RATE'],row['FMC_POOL_CAPACITY_SAVING'],row['FMC_POOL_CAPACITY_SAVING_RATE'],row['FMC_CAPACITY_EXPANSION_RATE']))
+        elif l == "tier_pool_pages":
+              for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  POOL_ID = {}  TIER_TYPE = {}  INTERVAL = {}  TIER_NUMBER = {}  PROMOTED_PAGES = {}  DEMOTED_PAGES = {}  RELOCATION_START_TIME = {}  RELOCATION_END_TIME = {}  RELOCATION_TIME = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['POOL_ID'],row['TIER_TYPE'],row['INTERVAL'],row['TIER_NUMBER'],row['PROMOTED_PAGES'],row['DEMOTED_PAGES'],row['RELOCATION_START_TIME'],row['RELOCATION_END_TIME'],row['RELOCATION_TIME']))
+        elif l == "tier_pool_io":
+              for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  POOL_ID = {}  TIER_TYPE = {}  INTERVAL = {}  TIER_NUMBER = {}  AVG_IOPS_UTILIZATION_RATE = {}  AVG_IO_RATE = {}  MONITOR_COLLECTION_START_TIME = {}  MONITOR_COLLECTION_END_TIME = {}  TIER_RANGE_IO_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['POOL_ID'],row['TIER_TYPE'],row['INTERVAL'],row['TIER_NUMBER'],row['AVG_IOPS_UTILIZATION_RATE'],row['AVG_IO_RATE'],row['MONITOR_COLLECTION_START_TIME'],row['MONITOR_COLLECTION_END_TIME'],row['TIER_RANGE_IO_RATE']))
+        elif l == "tier_pool_avg_io":
+              for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  POOL_ID = {}  TIER_TYPE = {}  INTERVAL = {}  TIER_NUMBER = {}  AVG_IO_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['POOL_ID'],row['TIER_TYPE'],row['INTERVAL'],row['TIER_NUMBER'],row['AVG_IO_RATE']))
+        elif l == "tier_pool_ldev":
+              for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  LDEV_NUMBER = {}  TIER_TYPE = {}  INTERVAL = {}  TIER_NUMBER = {}  POOL_ID = {}  USAGE_RATE = {}  USED_CAPACITY = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['LDEV_NUMBER'],row['TIER_TYPE'],row['INTERVAL'],row['TIER_NUMBER'],row['POOL_ID'],row['USAGE_RATE'],row['USED_CAPACITY']))
+        elif l == "tier_pool_ldev_io":
+              for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  LDEV_NUMBER = {}  TIER_TYPE = {}  INTERVAL = {}  TIER_NUMBER = {}  POOL_ID = {}  AVG_IO_RATE = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['LDEV_NUMBER'],row['TIER_TYPE'],row['INTERVAL'],row['TIER_NUMBER'],row['POOL_ID'],row['AVG_IO_RATE']))
+        elif l == "ldev_stat1":
+              for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  COLLECTION_TIME = {}  LDEV_NUMBER = {}  INTERVAL = {}  RAID_GROUP_NUMBER = {}  RAID_LEVEL = {}  RAID_TYPE = {}  EMULATION_TYPE = {}  LU_PROPERTY = {}  CLPR_NUMBER = {}  LDEV_LOCATION = {}  LUSE_VOLUME = {}  PDEV_NUMBER = {}  LDEV_STATUS = {}  LDEV_ATTRIBUTE = {}  REPLICATION_ATTRIBUTE = {}  LDEV_NAME = {}  SLPR_NUMBER = {}  VOLUME_TYPE = {}  POOL_ID = {}  MP_BLADE = {}  VIRTUAL_SERIAL_NUMBER = {}  VIRTUAL_DKC_NAME = {}  VIRTUAL_LDEV_NUMBER = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['COLLECTION_TIME'],row['LDEV_NUMBER'],row['INTERVAL'],row['RAID_GROUP_NUMBER'],row['RAID_LEVEL'],row['RAID_TYPE'],row['EMULATION_TYPE'],row['LU_PROPERTY'],row['CLPR_NUMBER'],row['LDEV_LOCATION'],row['LUSE_VOLUME'],row['PDEV_NUMBER'],row['LDEV_STATUS'],row['LDEV_ATTRIBUTE'],row['REPLICATION_ATTRIBUTE'],row['LDEV_NAME'],row['SLPR_NUMBER'],row['VOLUME_TYPE'],row['POOL_ID'],row['MP_BLADE'],row['VIRTUAL_SERIAL_NUMBER'],row['VIRTUAL_DKC_NAME'],row['VIRTUAL_LDEV_NUMBER']))
+        elif l == "ldev_stat2":
+              for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  LDEV_NUMBER = {}  INTERVAL = {}  RANDOM_READ_IO_RATE = {}  RANDOM_WRITE_IO_RATE = {}  SEQUENTIAL_READ_IO_RATE = {}  SEQUENTIAL_WRITE_IO_RATE = {}  RANDOM_READ_XFER_RATE = {}  RANDOM_WRITE_XFER_RATE = {}  SEQUENTIAL_READ_XFER_RATE = {}  SEQUENTIAL_WRITE_XFER_RATE = {}  BUSY_RATE = {}  MAX_BUSY_RATE = {}  VIRTUAL_SERIAL_NUMBER = {}  VIRTUAL_DKC_NAME = {}  VIRTUAL_LDEV_NUMBER = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['LDEV_NUMBER'],row['INTERVAL'],row['RANDOM_READ_IO_RATE'],row['RANDOM_WRITE_IO_RATE'],row['SEQUENTIAL_READ_IO_RATE'],row['SEQUENTIAL_WRITE_IO_RATE'],row['RANDOM_READ_XFER_RATE'],row['RANDOM_WRITE_XFER_RATE'],row['SEQUENTIAL_READ_XFER_RATE'],row['SEQUENTIAL_WRITE_XFER_RATE'],row['BUSY_RATE'],row['MAX_BUSY_RATE'],row['VIRTUAL_SERIAL_NUMBER'],row['VIRTUAL_DKC_NAME'],row['VIRTUAL_LDEV_NUMBER']))
+        elif l == "ldev_stat3":
+              for index,row in df[1:].iterrows():
+                 print('{}  GMT_ADJUST = {}  RECORD_TIME = {}  LDEV_NUMBER = {}  INTERVAL = {}  READ_IO_COUNT = {}  READ_IO_RATE = {}  READ_HIT_IO_COUNT = {}  READ_HIT_RATE = {}  WRITE_IO_COUNT = {}  WRITE_IO_RATE = {}  WRITE_HIT_IO_COUNT = {}  WRITE_HIT_RATE = {}  READ_MBYTES = {}  READ_XFER_RATE = {}  WRITE_MBYTES = {}  WRITE_XFER_RATE = {}  READ_TOTAL_RESPONSE = {}  READ_RESPONSE_RATE = {}  WRITE_TOTAL_RESPONSE = {}  WRITE_RESPONSE_RATE = {}  TOTAL_RESPONSE_RATE = {}  RANDOM_TOTAL_IO_RATE = {}  SEQUENTIAL_TOTAL_IO_RATE = {}  RANDOM_TOTAL_XFER_RATE = {}  SEQUENTIAL_TOTAL_XFER_RATE = {}  VIRTUAL_SERIAL_NUMBER = {}  VIRTUAL_DKC_NAME = {}  VIRTUAL_LDEV_NUMBER = {}'.format(row['DATETIME'],row['GMT_ADJUST'],row['RECORD_TIME'],row['LDEV_NUMBER'],row['INTERVAL'],row['READ_IO_COUNT'],row['READ_IO_RATE'],row['READ_HIT_IO_COUNT'],row['READ_HIT_RATE'],row['WRITE_IO_COUNT'],row['WRITE_IO_RATE'],row['WRITE_HIT_IO_COUNT'],row['WRITE_HIT_RATE'],row['READ_MBYTES'],row['READ_XFER_RATE'],row['WRITE_MBYTES'],row['WRITE_XFER_RATE'],row['READ_TOTAL_RESPONSE'],row['READ_RESPONSE_RATE'],row['WRITE_TOTAL_RESPONSE'],row['WRITE_RESPONSE_RATE'],row['TOTAL_RESPONSE_RATE'],row['RANDOM_TOTAL_IO_RATE'],row['SEQUENTIAL_TOTAL_IO_RATE'],row['RANDOM_TOTAL_XFER_RATE'],row['SEQUENTIAL_TOTAL_XFER_RATE'],row['VIRTUAL_SERIAL_NUMBER'],row['VIRTUAL_DKC_NAME'],row['VIRTUAL_LDEV_NUMBER']))
+        sys.stdout = orig_stdout
+        f.close()
+storage=["storagename1","storagename2"]
+with Pool(processes=14) as pool:
+    pool.map(getData,storage)
